@@ -14,6 +14,9 @@
     <MajorUpgrade DowngradeErrorMessage="Более новая версия WinDLNA уже установлена." />
     <MediaTemplate EmbedCab="yes" />
 
+    <Property Id="ARPURLINFOABOUT" Value="https://windlna.ru/" />
+    <Property Id="ARPHELPLINK" Value="https://windlna.ru/" />
+
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
 
