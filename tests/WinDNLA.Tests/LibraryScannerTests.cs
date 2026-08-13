@@ -57,7 +57,7 @@ public class LibraryScannerTests
     }
 
     [Fact]
-    public async Task Scan_marks_avi_as_needs_transcode()
+    public async Task Scan_stores_codec_used_for_live_transcode_decision()
     {
         await using var host = TestHost.Create();
         host.Ffmpeg.ForcedVideoCodec = "mpeg4";
@@ -66,7 +66,8 @@ public class LibraryScannerTests
         await host.ScanWithRootAsync();
 
         var video = host.Repo.GetAllVideosByPath().Values.Single();
-        Assert.True(video.NeedsTranscode);
+        Assert.Equal("mpeg4", video.VideoCodec);
+        Assert.True(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
     }
 
     [Fact]

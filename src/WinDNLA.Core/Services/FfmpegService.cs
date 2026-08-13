@@ -112,11 +112,13 @@ public sealed class FfmpegService : IFfmpegService
             ? $"-output_ts_offset {seekStr} -avoid_negative_ts disabled "
             : "";
 
+        // Quality: CRF 18 + preset fast (was veryfast, no CRF → soft/blocky on TV).
+        // Keep zerolatency for live MPEG-TS pipe; audio 256k.
         var args =
             $"-hide_banner -loglevel warning -fflags +genpts {seekArg}-i \"{inputPath}\" " +
-            "-map 0:v:0 -map 0:a:0? " +
-            "-c:v libx264 -preset veryfast -tune zerolatency -profile:v high -level 4.1 " +
-            $"-pix_fmt yuv420p -c:a aac -ac 2 -b:a 192k {tsOffsetArg}" +
+            "-map 0:v:0 -map 0:a? " +
+            "-c:v libx264 -preset fast -crf 18 -tune zerolatency -profile:v high -level 4.1 " +
+            $"-pix_fmt yuv420p -c:a aac -b:a 384k {tsOffsetArg}" +
             "-muxdelay 0 -muxpreload 0 -f mpegts -mpegts_flags +resend_headers pipe:1";
 
         var psi = new ProcessStartInfo

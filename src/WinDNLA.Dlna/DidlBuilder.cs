@@ -38,7 +38,8 @@ public static class DidlBuilder
         IEnumerable<MediaFolderRecord> childFolders,
         IEnumerable<VideoRecord> videos,
         Func<MediaFolderRecord, int> folderChildCount,
-        string baseUrl)
+        string baseUrl,
+        AppSettings settings)
     {
         var didl = new XElement(Didl + "DIDL-Lite",
             new XAttribute(XNamespace.Xmlns + "dc", Dc),
@@ -50,7 +51,7 @@ public static class DidlBuilder
             didl.Add(BuildContainer(child, folder.ObjectId, folderChildCount(child)));
 
         foreach (var video in videos)
-            didl.Add(BuildItem(video, folder.ObjectId, baseUrl));
+            didl.Add(BuildItem(video, folder.ObjectId, baseUrl, settings));
 
         return didl.ToString(SaveOptions.DisableFormatting);
     }
@@ -65,14 +66,14 @@ public static class DidlBuilder
         return didl.ToString(SaveOptions.DisableFormatting);
     }
 
-    public static string BuildMetadataItem(VideoRecord video, string parentId, string baseUrl)
+    public static string BuildMetadataItem(VideoRecord video, string parentId, string baseUrl, AppSettings settings)
     {
         var didl = new XElement(Didl + "DIDL-Lite",
             new XAttribute(XNamespace.Xmlns + "dc", Dc),
             new XAttribute(XNamespace.Xmlns + "upnp", Upnp),
             new XAttribute(XNamespace.Xmlns + "dlna", Dlna),
             new XAttribute("xmlns", Didl),
-            BuildItem(video, parentId, baseUrl));
+            BuildItem(video, parentId, baseUrl, settings));
         return didl.ToString(SaveOptions.DisableFormatting);
     }
 
@@ -85,16 +86,17 @@ public static class DidlBuilder
             new XElement(Dc + "title", folder.Name),
             new XElement(Upnp + "class", "object.container.storageFolder"));
 
-    private static XElement BuildItem(VideoRecord video, string parentId, string baseUrl)
+    private static XElement BuildItem(VideoRecord video, string parentId, string baseUrl, AppSettings settings)
     {
-        var protocol = TranscodeEvaluator.ProtocolInfo(video.Path, video.NeedsTranscode);
+        var needsTranscode = TranscodeEvaluator.NeedsTranscode(settings, video);
+        var protocol = TranscodeEvaluator.ProtocolInfo(video.Path, needsTranscode);
         var mediaUrl = $"{baseUrl.TrimEnd('/')}/media/{video.ObjectId}";
         var duration = FormatDuration(video.DurationSeconds);
 
         var res = new XElement(Didl + "res",
             new XAttribute("protocolInfo", protocol),
             mediaUrl);
-        if (!video.NeedsTranscode && video.Size > 0)
+        if (!needsTranscode && video.Size > 0)
             res.SetAttributeValue("size", video.Size.ToString(CultureInfo.InvariantCulture));
         if (video.DurationSeconds > 0)
             res.SetAttributeValue("duration", duration);

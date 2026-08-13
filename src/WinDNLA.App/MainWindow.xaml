@@ -312,7 +312,7 @@
                                 <ColumnDefinition Width="100" />
                                 <ColumnDefinition Width="100" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="IP" FontWeight="SemiBold" Opacity="0.7" />
+                                <TextBlock Text="IP" FontWeight="SemiBold" Opacity="0.7" />
                             <TextBlock Grid.Column="1" Text="Файл" FontWeight="SemiBold" Opacity="0.7" />
                             <TextBlock Grid.Column="2" Text="Мбит/с" FontWeight="SemiBold" Opacity="0.7" />
                             <TextBlock Grid.Column="3" Text="Транскод" FontWeight="SemiBold" Opacity="0.7" />
@@ -327,10 +327,16 @@
                                     <ColumnDefinition Width="100" />
                                     <ColumnDefinition Width="100" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding ClientIp}" />
-                                <TextBlock Grid.Column="1" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="2" Text="{Binding SpeedMbitPerSec}" />
-                                <TextBlock Grid.Column="3" Text="{Binding TranscodingLabel}" />
+                                <TextBlock Text="{Binding ClientIp}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding FileDetails}"
+                                               Opacity="0.65"
+                                               FontSize="12"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{Binding SpeedMbitPerSec}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding TranscodingLabel}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

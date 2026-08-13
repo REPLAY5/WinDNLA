@@ -77,7 +77,7 @@ internal sealed class TestHost : IAsyncDisposable
     public LibraryRepository Repo { get; }
     public FakeFfmpegService Ffmpeg { get; } = new();
     public LibraryScanner Scanner { get; }
-    public SessionTracker Sessions { get; } = new();
+    public SessionTracker Sessions { get; }
     public DlnaHttpServer? Http { get; private set; }
 
     private TestHost(string root)
@@ -91,6 +91,7 @@ internal sealed class TestHost : IAsyncDisposable
         Settings = new SettingsService();
         Repo = new LibraryRepository();
         Scanner = new LibraryScanner(Repo, Settings, Ffmpeg);
+        Sessions = new SessionTracker(Repo);
     }
 
     public static TestHost Create()
@@ -130,6 +131,7 @@ internal sealed class TestHost : IAsyncDisposable
     {
         if (Http is not null)
             await Http.DisposeAsync();
+        Sessions.Dispose();
         Repo.Dispose();
         AppPaths.SetRootOverride(null);
         try

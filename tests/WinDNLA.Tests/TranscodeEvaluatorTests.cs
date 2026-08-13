@@ -36,6 +36,16 @@ public class TranscodeEvaluatorTests
     }
 
     [Fact]
+    public void VideoRecord_overload_uses_path_and_codec()
+    {
+        var settings = new AppSettings { TranscodingEnabled = true };
+        var avi = new VideoRecord { Path = @"C:\v\movie.avi", VideoCodec = "xvid" };
+        var mp4 = new VideoRecord { Path = @"C:\v\movie.mp4", VideoCodec = "h264" };
+        Assert.True(TranscodeEvaluator.NeedsTranscode(settings, avi));
+        Assert.False(TranscodeEvaluator.NeedsTranscode(settings, mp4));
+    }
+
+    [Fact]
     public void Disabled_global_flag_skips_all_rules()
     {
         var settings = new AppSettings { TranscodingEnabled = false };

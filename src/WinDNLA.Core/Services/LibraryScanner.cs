@@ -116,7 +116,6 @@ public sealed class LibraryScanner
                     await ProcessOneAsync(
                         file,
                         roots,
-                        settings,
                         existing,
                         keep,
                         folderCache,
@@ -138,7 +137,6 @@ public sealed class LibraryScanner
                     await ProcessOneAsync(
                         file,
                         roots,
-                        settings,
                         existing,
                         keep,
                         folderCache,
@@ -219,7 +217,6 @@ public sealed class LibraryScanner
     private async ValueTask ProcessOneAsync(
         string file,
         List<string> roots,
-        AppSettings settings,
         Dictionary<string, VideoRecord> existing,
         ConcurrentDictionary<string, byte> keep,
         Dictionary<string, long> folderCache,
@@ -252,19 +249,7 @@ public sealed class LibraryScanner
             incUnchanged();
             var done = nextProcessed();
 
-            var needs = TranscodeEvaluator.NeedsTranscode(settings, file, old!.VideoCodec);
-            if (needs != old.NeedsTranscode)
-            {
-                old.NeedsTranscode = needs;
-                old.MtimeUtcTicks = info.LastWriteTimeUtc.Ticks;
-                _repo.UpsertVideo(old);
-                markChanged();
-                PublishPartial();
-            }
-            else
-            {
-                old.MtimeUtcTicks = info.LastWriteTimeUtc.Ticks;
-            }
+            old!.MtimeUtcTicks = info.LastWriteTimeUtc.Ticks;
 
             if (ThumbNeedsGeneration(old.ThumbPath))
             {
@@ -363,8 +348,7 @@ public sealed class LibraryScanner
             AudioCodec = probe?.AudioCodec ?? old?.AudioCodec ?? "",
             Width = probe?.Width ?? old?.Width ?? 0,
             Height = probe?.Height ?? old?.Height ?? 0,
-            ThumbPath = thumb,
-            NeedsTranscode = TranscodeEvaluator.NeedsTranscode(settings, file, probe?.VideoCodec ?? old?.VideoCodec)
+            ThumbPath = thumb
         };
         _repo.UpsertVideo(video);
         lock (existing)

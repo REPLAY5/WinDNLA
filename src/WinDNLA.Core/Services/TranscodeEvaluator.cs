@@ -14,6 +14,9 @@ public static class TranscodeEvaluator
 
     public static IReadOnlyCollection<string> VideoExtensionsList => VideoExtensions;
 
+    public static bool NeedsTranscode(AppSettings settings, VideoRecord video) =>
+        NeedsTranscode(settings, video.Path, video.VideoCodec);
+
     public static bool NeedsTranscode(AppSettings settings, string path, string? videoCodec)
     {
         if (!settings.TranscodingEnabled) return false;

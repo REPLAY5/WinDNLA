@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text;
+using WinDNLA.Core.Models;
+using WinDNLA.Core.Services;
 using WinDNLA.Dlna;
 
 namespace WinDNLA.Tests;
@@ -7,29 +9,98 @@ namespace WinDNLA.Tests;
 public class SessionTrackerTests
 {
     [Fact]
-    public void Tracks_speed_and_transcode_flag()
+    public async Task Tracks_speed_and_enriches_file_info_from_db()
     {
-        var tracker = new SessionTracker();
-        var changed = 0;
-        tracker.SessionsChanged += (_, _) => changed++;
+        await using var host = TestHost.Create();
+        host.Ffmpeg.ForcedVideoCodec = "h264";
+        var path = host.CreateVideo("a.mp4", "payload");
+        // Override probe defaults via direct DB update after scan for stable asserts.
+        await host.ScanWithRootAsync();
+        var video = host.Repo.GetAllVideosByPath()[Path.GetFullPath(path)];
+        video.DurationSeconds = 3723;
+        video.Size = 1_500_000_000;
+        video.Width = 1920;
+        video.Height = 1080;
+        host.Repo.UpsertVideo(video);
 
-        using (var session = tracker.Begin("192.168.1.10", @"C:\v\a.mp4", "a", isTranscoding: true))
+        var changed = 0;
+        host.Sessions.SessionsChanged += (_, _) => changed++;
+
+        using (var session = host.Sessions.Begin("192.168.1.10", path, "a", isTranscoding: true))
         {
             session.AddBytes(1_000_000);
             Thread.Sleep(1100);
             session.AddBytes(500_000);
 
-            var info = tracker.GetSessions().Single();
+            var info = host.Sessions.GetSessions().Single();
             Assert.Equal("192.168.1.10", info.ClientIp);
             Assert.Equal("a", info.FileName);
             Assert.True(info.IsTranscoding);
             Assert.Equal("да", info.TranscodingLabel);
             Assert.True(info.SpeedMbitPerSec >= 0);
+            Assert.Equal("1:02:03", info.DurationLabel);
+            Assert.Equal("1.4 ГБ", info.SizeLabel);
+            Assert.Equal("h264", info.VideoCodec);
+            Assert.Equal("1920x1080", info.ResolutionLabel);
+            Assert.Equal("1:02:03 · 1.4 ГБ · h264 · 1920x1080", info.FileDetails);
         }
 
-        Assert.Empty(tracker.GetSessions());
+        Assert.Empty(host.Sessions.GetSessions());
         Assert.True(changed >= 2);
     }
+
+    [Fact]
+    public async Task Idle_stream_decays_speed_to_zero()
+    {
+        await using var host = TestHost.Create();
+        var path = host.CreateVideo("idle.mp4", "payload");
+        await host.ScanWithRootAsync();
+
+        var sawPositive = false;
+        var zeroAfterPositive = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.Sessions.SessionsChanged += (_, _) =>
+        {
+            var session = host.Sessions.GetSessions().FirstOrDefault();
+            if (session is null) return;
+            if (session.SpeedMbitPerSec > 0)
+                sawPositive = true;
+            else if (sawPositive)
+                zeroAfterPositive.TrySetResult();
+        };
+
+        using var session = host.Sessions.Begin("192.168.1.20", path, "idle", isTranscoding: false);
+        session.AddBytes(2_000_000);
+        await Task.Delay(1100);
+        session.AddBytes(1_000_000);
+
+        Assert.True(host.Sessions.GetSessions().Single().SpeedMbitPerSec > 0);
+        Assert.True(sawPositive);
+
+        // No further bytes — pause. Idle timer should reset speed to 0.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await zeroAfterPositive.Task.WaitAsync(cts.Token);
+        Assert.Equal(0, host.Sessions.GetSessions().Single().SpeedMbitPerSec);
+    }
+}
+
+public class HumanFormatTests
+{
+    [Theory]
+    [InlineData(0, "")]
+    [InlineData(45, "0:45")]
+    [InlineData(125, "2:05")]
+    [InlineData(3723, "1:02:03")]
+    public void Duration(double seconds, string expected) =>
+        Assert.Equal(expected, HumanFormat.Duration(seconds));
+
+    [Theory]
+    [InlineData(0, "")]
+    [InlineData(500, "500 Б")]
+    [InlineData(2048, "2 КБ")]
+    [InlineData(1_572_864, "1.5 МБ")]
+    [InlineData(1_500_000_000, "1.4 ГБ")]
+    public void FileSize(long bytes, string expected) =>
+        Assert.Equal(expected, HumanFormat.FileSize(bytes));
 }
 
 public class DlnaHttpServerTests
@@ -66,7 +137,7 @@ public class DlnaHttpServerTests
         await host.ScanWithRootAsync();
 
         var video = host.Repo.GetAllVideosByPath()[path];
-        Assert.False(video.NeedsTranscode);
+        Assert.False(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
 
         var http = await host.StartHttpAsync();
         using var client = new HttpClient();
@@ -87,7 +158,7 @@ public class DlnaHttpServerTests
         await host.ScanWithRootAsync();
 
         var video = host.Repo.GetAllVideosByPath()[path];
-        Assert.True(video.NeedsTranscode);
+        Assert.True(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
 
         var sawTranscodingSession = false;
         host.Sessions.SessionsChanged += (_, _) =>
@@ -107,6 +178,52 @@ public class DlnaHttpServerTests
     }
 
     [Fact]
+    public async Task Rule_change_applies_without_rescan()
+    {
+        await using var host = TestHost.Create();
+        host.Ffmpeg.ForcedVideoCodec = "xvid";
+        var path = host.CreateVideo("clip.mkv", "RULE-LIVE-PAYLOAD");
+        host.Settings.Update(s =>
+        {
+            s.TranscodingEnabled = true;
+            s.TranscodeRules =
+            [
+                new TranscodeRule
+                {
+                    Extensions = [".avi"],
+                    MatchNonAllowedCodecs = false,
+                    Enabled = true
+                }
+            ];
+        });
+        await host.ScanWithRootAsync();
+
+        var video = host.Repo.GetAllVideosByPath()[path];
+        Assert.False(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
+
+        host.Settings.Update(s =>
+        {
+            s.TranscodeRules =
+            [
+                new TranscodeRule
+                {
+                    Extensions = [".mkv"],
+                    MatchNonAllowedCodecs = true,
+                    AllowedCodecs = ["h264", "h265"],
+                    Enabled = true
+                }
+            ];
+        });
+        Assert.True(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
+
+        var http = await host.StartHttpAsync();
+        using var client = new HttpClient();
+        var bytes = await client.GetByteArrayAsync($"{http.BaseUrl}/media/{video.ObjectId}");
+        Assert.Equal("RULE-LIVE-PAYLOAD", Encoding.UTF8.GetString(bytes));
+        Assert.Contains(path, host.Ffmpeg.TranscodePaths);
+    }
+
+    [Fact]
     public async Task Transcoded_TimeSeekRange_restarts_ffmpeg_with_seek()
     {
         await using var host = TestHost.Create();
@@ -114,7 +231,7 @@ public class DlnaHttpServerTests
         var path = host.CreateVideo("seek.avi", "SEEK-PAYLOAD");
         await host.ScanWithRootAsync();
         var video = host.Repo.GetAllVideosByPath()[path];
-        Assert.True(video.NeedsTranscode);
+        Assert.True(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
         Assert.Equal(12.5, video.DurationSeconds);
 
         var http = await host.StartHttpAsync();
@@ -212,7 +329,7 @@ public class DlnaHttpServerTests
         var path = host.CreateVideo("head.avi", "AVI-HEAD");
         await host.ScanWithRootAsync();
         var video = host.Repo.GetAllVideosByPath()[path];
-        Assert.True(video.NeedsTranscode);
+        Assert.True(TranscodeEvaluator.NeedsTranscode(host.Settings.Current, video));
 
         var http = await host.StartHttpAsync();
         using var client = new HttpClient();

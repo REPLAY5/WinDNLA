@@ -55,12 +55,34 @@ public sealed class LibraryRepository : IDisposable
               height INTEGER NOT NULL,
               thumb_path TEXT NULL,
               object_id TEXT NOT NULL UNIQUE,
-              needs_transcode INTEGER NOT NULL,
               FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE
             );
             INSERT OR IGNORE INTO meta(key, value) VALUES('system_update_id', '1');
             """;
         cmd.ExecuteNonQuery();
+        DropLegacyNeedsTranscodeColumn();
+    }
+
+    private void DropLegacyNeedsTranscodeColumn()
+    {
+        using var check = _connection.CreateCommand();
+        check.CommandText = "PRAGMA table_info(videos)";
+        using var reader = check.ExecuteReader();
+        var hasColumn = false;
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), "needs_transcode", StringComparison.OrdinalIgnoreCase))
+            {
+                hasColumn = true;
+                break;
+            }
+        }
+        reader.Close();
+        if (!hasColumn) return;
+
+        using var drop = _connection.CreateCommand();
+        drop.CommandText = "ALTER TABLE videos DROP COLUMN needs_transcode";
+        drop.ExecuteNonQuery();
     }
 
     public long GetSystemUpdateId()
@@ -116,7 +138,7 @@ public sealed class LibraryRepository : IDisposable
             cmd.CommandText =
                 """
                 SELECT id, folder_id, path, title, size, mtime_utc_ticks, duration, container,
-                       video_codec, audio_codec, width, height, thumb_path, object_id, needs_transcode
+                       video_codec, audio_codec, width, height, thumb_path, object_id
                 FROM videos
                 """;
             using var reader = cmd.ExecuteReader();
@@ -158,18 +180,50 @@ public sealed class LibraryRepository : IDisposable
     public VideoRecord? GetVideoByObjectId(string objectId)
     {
         lock (_lock)
+            return GetVideoByObjectId_NoLock(objectId);
+    }
+
+    public VideoRecord? GetVideoByPath(string path)
+    {
+        lock (_lock)
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText =
-                """
-                SELECT id, folder_id, path, title, size, mtime_utc_ticks, duration, container,
-                       video_codec, audio_codec, width, height, thumb_path, object_id, needs_transcode
-                FROM videos WHERE object_id = $oid
-                """;
-            cmd.Parameters.AddWithValue("$oid", objectId);
-            using var reader = cmd.ExecuteReader();
-            return reader.Read() ? ReadVideo(reader) : null;
+            try { path = Path.GetFullPath(path); }
+            catch { /* keep as-is */ }
+
+            var byOid = GetVideoByObjectId_NoLock(MakeObjectId("V", path));
+            if (byOid is not null) return byOid;
+
+            var id = FindVideoIdByPathIgnoreCase_NoLock(path);
+            return id is null ? null : GetVideoById_NoLock(id.Value);
         }
+    }
+
+    private VideoRecord? GetVideoByObjectId_NoLock(string objectId)
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText =
+            """
+            SELECT id, folder_id, path, title, size, mtime_utc_ticks, duration, container,
+                   video_codec, audio_codec, width, height, thumb_path, object_id
+            FROM videos WHERE object_id = $oid
+            """;
+        cmd.Parameters.AddWithValue("$oid", objectId);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? ReadVideo(reader) : null;
+    }
+
+    private VideoRecord? GetVideoById_NoLock(long id)
+    {
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText =
+            """
+            SELECT id, folder_id, path, title, size, mtime_utc_ticks, duration, container,
+                   video_codec, audio_codec, width, height, thumb_path, object_id
+            FROM videos WHERE id = $id
+            """;
+        cmd.Parameters.AddWithValue("$id", id);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? ReadVideo(reader) : null;
     }
 
     public List<MediaFolderRecord> GetChildFolders(long? parentId)
@@ -211,7 +265,7 @@ public sealed class LibraryRepository : IDisposable
             cmd.CommandText =
                 """
                 SELECT id, folder_id, path, title, size, mtime_utc_ticks, duration, container,
-                       video_codec, audio_codec, width, height, thumb_path, object_id, needs_transcode
+                       video_codec, audio_codec, width, height, thumb_path, object_id
                 FROM videos WHERE folder_id = $fid ORDER BY title COLLATE NOCASE
                 """;
             cmd.Parameters.AddWithValue("$fid", folderId);
@@ -318,8 +372,7 @@ public sealed class LibraryRepository : IDisposable
                       width=$width,
                       height=$height,
                       thumb_path=$thumb,
-                      object_id=$oid,
-                      needs_transcode=$needs
+                      object_id=$oid
                     WHERE id=$id
                     """;
                 BindVideoParams(upd, video);
@@ -345,9 +398,9 @@ public sealed class LibraryRepository : IDisposable
             ins.CommandText =
                 """
                 INSERT INTO videos(folder_id, path, title, size, mtime_utc_ticks, duration, container,
-                  video_codec, audio_codec, width, height, thumb_path, object_id, needs_transcode)
+                  video_codec, audio_codec, width, height, thumb_path, object_id)
                 VALUES($folder_id, $path, $title, $size, $mtime, $duration, $container,
-                  $vcodec, $acodec, $width, $height, $thumb, $oid, $needs)
+                  $vcodec, $acodec, $width, $height, $thumb, $oid)
                 """;
             BindVideoParams(ins, video);
             ins.ExecuteNonQuery();
@@ -369,7 +422,6 @@ public sealed class LibraryRepository : IDisposable
         cmd.Parameters.AddWithValue("$height", video.Height);
         cmd.Parameters.AddWithValue("$thumb", (object?)video.ThumbPath ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$oid", video.ObjectId);
-        cmd.Parameters.AddWithValue("$needs", video.NeedsTranscode ? 1 : 0);
     }
 
     private long? FindVideoIdByObjectId_NoLock(string objectId)
@@ -504,8 +556,7 @@ public sealed class LibraryRepository : IDisposable
         Width = reader.GetInt32(10),
         Height = reader.GetInt32(11),
         ThumbPath = reader.IsDBNull(12) ? null : reader.GetString(12),
-        ObjectId = reader.GetString(13),
-        NeedsTranscode = reader.GetInt32(14) != 0
+        ObjectId = reader.GetString(13)
     };
 
     public void Dispose()

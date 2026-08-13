@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 param(
     [string]$Configuration = "Release",
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.0.0.1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,6 +52,6 @@ if (-not $built) {
     throw "WinDLNA.msi was not produced. Is WiX SDK available? Try: dotnet restore $SetupProj"
 }
 
-$dest = Join-Path $OutDir "WinDLNA-$Version-x64.msi"
+$dest = Join-Path $OutDir "WinDLNA.msi"
 Copy-Item $built.FullName $dest -Force
 Write-Host "MSI: $dest"

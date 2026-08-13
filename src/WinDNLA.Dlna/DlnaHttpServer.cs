@@ -381,7 +381,8 @@ public sealed class DlnaHttpServer : IAsyncDisposable
                     if (startingIndex >= childFolders.Count)
                         folderPage = [];
                     result = DidlBuilder.BuildFolderChildren(folder, folderPage, videoPage,
-                        f => _repo.CountChildFolders(f.Id) + _repo.CountVideosInFolder(f.Id), baseUrl);
+                        f => _repo.CountChildFolders(f.Id) + _repo.CountVideosInFolder(f.Id), baseUrl,
+                        _settings.Current);
                     numberReturned = folderPage.Count + videoPage.Count;
                     totalMatches = combinedCount;
                 }
@@ -393,7 +394,7 @@ public sealed class DlnaHttpServer : IAsyncDisposable
                     return DidlBuilder.SoapFault("Invalid ObjectID");
 
                 var parentFolder = FindFolderObjectId(video.FolderId) ?? "0";
-                result = DidlBuilder.BuildMetadataItem(video, parentFolder, baseUrl);
+                result = DidlBuilder.BuildMetadataItem(video, parentFolder, baseUrl, _settings.Current);
                 numberReturned = 1;
                 totalMatches = 1;
             }
@@ -651,7 +652,7 @@ public sealed class DlnaHttpServer : IAsyncDisposable
         }
 
         var clientIp = ctx.Request.RemoteEndPoint?.Address.ToString() ?? "?";
-        var needsTranscode = video.NeedsTranscode && _settings.Current.TranscodingEnabled;
+        var needsTranscode = TranscodeEvaluator.NeedsTranscode(_settings.Current, video);
         ctx.ConfigureForStreaming();
         var range = ctx.Request.Headers["Range"];
         _logger?.Log(
@@ -704,7 +705,7 @@ public sealed class DlnaHttpServer : IAsyncDisposable
             return;
         }
 
-        using var session = _sessions.Begin(clientIp, video.Path, video.Title, false);
+        using var session = _sessions.Begin(clientIp, video, false);
         await using var fs = new FileStream(video.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
         fs.Seek(start, SeekOrigin.Begin);
         var buffer = new byte[64 * 1024];
@@ -786,7 +787,7 @@ public sealed class DlnaHttpServer : IAsyncDisposable
             return;
         }
 
-        using var session = _sessions.Begin(clientIp, video.Path, video.Title, true);
+        using var session = _sessions.Begin(clientIp, video, true);
         Process? process = null;
         try
         {
