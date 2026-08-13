@@ -16,6 +16,8 @@
 
     <Property Id="ARPURLINFOABOUT" Value="https://windlna.ru/" />
     <Property Id="ARPHELPLINK" Value="https://windlna.ru/" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+    <Icon Id="AppIcon.ico" SourceFile="..\..\src\WinDNLA.App\Assets\AppIcon.ico" />
 
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
@@ -24,6 +26,7 @@
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="StartupShortcutOptional" />
+      <ComponentRef Id="GplLicenseFile" />
     </Feature>
 
     <Property Id="INSTALL_STARTUP" Value="1" />
@@ -44,12 +47,17 @@
       </Files>
     </ComponentGroup>
 
+    <Component Id="GplLicenseFile" Directory="INSTALLFOLDER" Guid="D4E5F6A7-B8C9-4012-D345-6789ABCDEF01">
+      <File Source="..\..\LICENSE" Name="LICENSE.txt" KeyPath="yes" />
+    </Component>
+
     <Component Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Guid="B2C3D4E5-F6A7-4890-B123-456789ABCDEF">
       <Shortcut Id="AppShortcut"
                 Name="WinDLNA"
                 Description="Windows DLNA Media Server"
                 Target="[INSTALLFOLDER]WinDLNA.exe"
-                WorkingDirectory="INSTALLFOLDER" />
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AppIcon.ico" />
       <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
       <RegistryValue Root="HKCU" Key="Software\WinDLNA" Name="installed" Type="integer" Value="1" KeyPath="yes" />
     </Component>
@@ -60,7 +68,8 @@
                 Description="WinDLNA (quiet)"
                 Target="[INSTALLFOLDER]WinDLNA.exe"
                 Arguments="--quiet"
-                WorkingDirectory="INSTALLFOLDER" />
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AppIcon.ico" />
       <RegistryValue Root="HKCU" Key="Software\WinDLNA" Name="startup" Type="integer" Value="1" KeyPath="yes" />
     </Component>
   </Package>

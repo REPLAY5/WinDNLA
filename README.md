@@ -67,3 +67,12 @@ dotnet test tests\WinDNLA.Tests\WinDNLA.Tests.csproj
 ```
 
 Покрывают: готовность файлов (lock / `.part`), скан библиотеки, пропуск занятых, Browse/стрим DLNA с транскодом и без, Range, SessionTracker.
+
+
+## Лицензия
+
+WinDLNA распространяется на условиях [GNU General Public License версии 3](LICENSE) (или, по вашему выбору, любой более поздней версии).
+
+Полный текст — в файле `LICENSE` в корне репозитория. MSI-установщик показывает лицензионное соглашение (страница WiX) и кладёт `LICENSE.txt` в папку программы.
+
+сайт: https://windlna.ru

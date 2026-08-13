@@ -21,17 +21,39 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" Condition="Exists('Assets\SplashScreen.scale-200.png')" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" Condition="Exists('Assets\LockScreenLogo.scale-200.png')" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" Condition="Exists('Assets\Square150x150Logo.scale-200.png')" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" Condition="Exists('Assets\Square44x44Logo.scale-200.png')" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" Condition="Exists('Assets\Square44x44Logo.targetsize-24_altform-unplated.png')" />
-    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" Condition="Exists('Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png')" />
-    <Content Include="Assets\logo.png" Condition="Exists('Assets\logo.png')" />
-    <Content Include="Assets\StoreLogo.png" Condition="Exists('Assets\StoreLogo.png')" />
-    <Content Include="Assets\AppIcon.ico" Condition="Exists('Assets\AppIcon.ico')" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" Condition="Exists('Assets\Wide310x150Logo.scale-200.png')" />
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
+
+  <!-- WinUI unpackaged: SDK publish omits .pri/.xbf unless MSIX tooling is on. -->
+  <Target Name="AddWinUiFilesToPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(OutputPath)$(AssemblyName).pri" Condition="Exists('$(OutputPath)$(AssemblyName).pri')">
+        <RelativePath>$(AssemblyName).pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CopyWinUiFilesAfterPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_WinUiOut>$([MSBuild]::EnsureTrailingSlash('$(OutputPath)'))</_WinUiOut>
+      <_WinUiPub>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))</_WinUiPub>
+    </PropertyGroup>
+    <ItemGroup>
+      <_WinUiExtra Include="$(_WinUiOut)$(AssemblyName).pri" Condition="Exists('$(_WinUiOut)$(AssemblyName).pri')" />
+      <_WinUiExtra Include="$(_WinUiOut)*.xbf" />
+      <_WinUiAssets Include="$(_WinUiOut)Assets\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WinUiExtra)" DestinationFolder="$(_WinUiPub)" SkipUnchangedFiles="true"
+          Condition="'$(_WinUiOut)' != '$(_WinUiPub)' and '@(_WinUiExtra)' != ''" />
+    <Copy SourceFiles="@(_WinUiAssets)"
+          DestinationFiles="@(_WinUiAssets->'$(_WinUiPub)Assets\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="'$(_WinUiOut)' != '$(_WinUiPub)' and '@(_WinUiAssets)' != ''" />
+  </Target>
 
   <!-- Bundle ffmpeg next to the app when present -->
   <ItemGroup>

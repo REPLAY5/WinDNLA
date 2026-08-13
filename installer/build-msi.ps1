@@ -33,6 +33,13 @@ New-Item -ItemType Directory -Force -Path $ffmpegOut | Out-Null
 if (Test-Path $ffmpeg) { Copy-Item $ffmpeg $ffmpegOut -Force }
 if (Test-Path $ffprobe) { Copy-Item $ffprobe $ffmpegOut -Force }
 
+$pri = Join-Path $PublishDir "WinDLNA.pri"
+$logo = Join-Path $PublishDir "Assets\logo.png"
+$xbf = Join-Path $PublishDir "MainWindow.xbf"
+if (-not (Test-Path $pri) -or -not (Test-Path $xbf) -or -not (Test-Path $logo)) {
+    throw "Publish output is missing WinUI resources (WinDLNA.pri / *.xbf / Assets\logo.png). Installed app would fail to start."
+}
+
 Write-Host "Building MSI with WiX..."
 # Do not pass -p:DefineConstants — MSBuild splits on ';' and drops ProductVersion.
 # WinDNLA.Setup.wixproj already maps PublishDir / ProductVersion into DefineConstants.

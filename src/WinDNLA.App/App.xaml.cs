@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -39,6 +40,11 @@ public partial class App : Application
             }
             catch { /* ignore */ }
             e.Handled = true;
+            if (_window is null)
+            {
+                ShowFatalError("Не удалось открыть окно WinDLNA.\n\nПодробности в логе:\n" + AppPaths.CurrentLogFile);
+                Environment.Exit(1);
+            }
         };
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
@@ -80,9 +86,29 @@ public partial class App : Application
         var log = _services.GetRequiredService<ILogger<App>>();
         log.LogInformation("WinDLNA starting quiet={Quiet} log={LogFile}", StartQuiet, AppPaths.CurrentLogFile);
         var vm = _services.GetRequiredService<MainViewModel>();
-        _window = new MainWindow(vm, StartQuiet);
+        try
+        {
+            _window = new MainWindow(vm, StartQuiet);
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Failed to create main window");
+            FileLoggerProvider.WriteEmergency($"Failed to create main window: {ex}");
+            ShowFatalError("Не удалось открыть окно WinDLNA.\n\nПодробности в логе:\n" + AppPaths.CurrentLogFile);
+            Environment.Exit(1);
+            return;
+        }
         if (!StartQuiet)
             _window.Activate();
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int MessageBoxW(nint hWnd, string text, string caption, uint type);
+
+    private static void ShowFatalError(string message)
+    {
+        try { MessageBoxW(0, message, "WinDLNA", 0x00000010); }
+        catch { /* ignore */ }
     }
 
     public void DisposeServices()

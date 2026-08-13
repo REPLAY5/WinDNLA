@@ -366,7 +366,115 @@ section {
 }
 
 .download {
+  padding-bottom: 48px;
+}
+
+.contacts {
   padding-bottom: 96px;
+}
+
+.contacts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.contact-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+a.contact-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(74, 163, 255, 0.45);
+  background: rgba(14, 42, 78, 0.78);
+}
+
+.contact-card .icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(74, 163, 255, 0.12);
+  color: var(--accent);
+}
+
+.contact-card h3 {
+  margin: 0 0 4px;
+  font-size: 1.08rem;
+}
+
+.contact-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.card-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.card-copy:hover {
+  border-color: rgba(74, 163, 255, 0.5);
+  background: rgba(74, 163, 255, 0.1);
+}
+
+.card-copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.card-copy-number {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  font-size: 0.98rem;
+}
+
+.card-copy-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.card-copy.copied {
+  background: rgba(127, 186, 0, 0.18);
+  border-color: var(--win-green);
+  box-shadow: 0 0 0 3px rgba(127, 186, 0, 0.22);
+  animation: copied-flash 0.45s ease;
+}
+
+.card-copy.copied .card-copy-hint {
+  color: #d4f5a0;
+  font-weight: 650;
+}
+
+@keyframes copied-flash {
+  0% { transform: scale(0.98); }
+  55% { transform: scale(1.03); }
+  100% { transform: scale(1); }
 }
 
 .download-card {
@@ -441,7 +549,8 @@ section {
   .pills,
   .features,
   .steps,
-  .download-card {
+  .download-card,
+  .contacts-grid {
     grid-template-columns: 1fr;
   }
 
@@ -481,5 +590,11 @@ section {
 
   .header-inner {
     position: relative;
+  }
+
+  .card-copy-number {
+    font-size: 0.86rem;
+    letter-spacing: 0.04em;
+    word-break: break-all;
   }
 }

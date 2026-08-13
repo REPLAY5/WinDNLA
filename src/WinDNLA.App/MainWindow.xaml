@@ -46,6 +46,16 @@
                 <TitleBar.IconSource>
                     <ImageIconSource ImageSource="Assets/logo.png" />
                 </TitleBar.IconSource>
+                <TitleBar.RightHeader>
+                    <HyperlinkButton Content="windlna.ru"
+                                     NavigateUri="https://windlna.ru/"
+                                     FontSize="12"
+                                     Padding="8,2"
+                                     Margin="0,0,4,0"
+                                     Opacity="0.75"
+                                     VerticalAlignment="Center"
+                                     ToolTipService.ToolTip="Сайт WinDLNA" />
+                </TitleBar.RightHeader>
             </TitleBar>
 
             <ScrollViewer Grid.Row="1" Padding="24,8,24,12"
