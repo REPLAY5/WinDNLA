@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/installer/">
+    <Project Path="installer/WinDNLA.Setup/WinDNLA.Setup.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/WinDNLA.App/WinDNLA.App.csproj" />
+    <Project Path="src/WinDNLA.Core/WinDNLA.Core.csproj" />
+    <Project Path="src/WinDNLA.Dlna/WinDNLA.Dlna.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WinDNLA.Tests/WinDNLA.Tests.csproj" />
+  </Folder>
+</Solution>

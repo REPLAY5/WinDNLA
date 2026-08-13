@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "WinDNLA.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "WinDNLA.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

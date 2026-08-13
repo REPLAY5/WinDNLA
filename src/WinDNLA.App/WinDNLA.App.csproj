@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>WinDNLA.App</RootNamespace>
+    <AssemblyName>WinDNLA</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <EnableWinAppRunSupport>false</EnableWinAppRunSupport>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" Condition="Exists('Assets\SplashScreen.scale-200.png')" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" Condition="Exists('Assets\LockScreenLogo.scale-200.png')" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" Condition="Exists('Assets\Square150x150Logo.scale-200.png')" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" Condition="Exists('Assets\Square44x44Logo.scale-200.png')" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" Condition="Exists('Assets\Square44x44Logo.targetsize-24_altform-unplated.png')" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" Condition="Exists('Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png')" />
+    <Content Include="Assets\logo.png" Condition="Exists('Assets\logo.png')" />
+    <Content Include="Assets\StoreLogo.png" Condition="Exists('Assets\StoreLogo.png')" />
+    <Content Include="Assets\AppIcon.ico" Condition="Exists('Assets\AppIcon.ico')" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" Condition="Exists('Assets\Wide310x150Logo.scale-200.png')" />
+  </ItemGroup>
+
+  <!-- Bundle ffmpeg next to the app when present -->
+  <ItemGroup>
+    <None Include="..\..\tools\ffmpeg\ffmpeg.exe" Condition="Exists('..\..\tools\ffmpeg\ffmpeg.exe')">
+      <Link>ffmpeg\ffmpeg.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="..\..\tools\ffmpeg\ffprobe.exe" Condition="Exists('..\..\tools\ffmpeg\ffprobe.exe')">
+      <Link>ffmpeg\ffprobe.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinDNLA.Core\WinDNLA.Core.csproj" />
+    <ProjectReference Include="..\WinDNLA.Dlna\WinDNLA.Dlna.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed>False</PublishTrimmed>
+  </PropertyGroup>
+</Project>
