@@ -5,7 +5,7 @@ namespace WinDNLA.Core.Services;
 
 public sealed class AutostartService
 {
-    private const string ShortcutName = "WinDNLA.lnk";
+    private const string ShortcutName = "WinDLNA.lnk";
     private readonly SettingsService _settings;
     private readonly ILogger<AutostartService>? _logger;
 
@@ -42,7 +42,7 @@ public sealed class AutostartService
         {
             Directory.CreateDirectory(StartupFolder);
             var target = Environment.ProcessPath
-                         ?? Path.Combine(AppContext.BaseDirectory, "WinDNLA.exe");
+                         ?? Path.Combine(AppContext.BaseDirectory, "WinDLNA.exe");
             CreateShortcut(ShortcutPath, target, "--quiet", Path.GetDirectoryName(target) ?? AppContext.BaseDirectory);
         }
         catch (Exception ex)
@@ -75,7 +75,7 @@ public sealed class AutostartService
         shortcut.Arguments = arguments;
         shortcut.WorkingDirectory = workingDirectory;
         shortcut.WindowStyle = 7; // minimized
-        shortcut.Description = "WinDNLA DLNA Server";
+        shortcut.Description = "WinDLNA DLNA Server";
         var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
         if (File.Exists(icon))
             shortcut.IconLocation = icon;

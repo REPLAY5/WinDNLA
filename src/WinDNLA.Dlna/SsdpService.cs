@@ -12,7 +12,7 @@ public sealed class SsdpService : IAsyncDisposable
     private const int MulticastPort = 1900;
 
     /// <summary>LG WebOS Photo/Video ignores UPnP servers whose SSDP SERVER lacks DLNADOC.</summary>
-    public const string ServerToken = "Windows/10 UPnP/1.0 DLNADOC/1.50 WinDNLA/1.0";
+    public const string ServerToken = "Windows/10 UPnP/1.0 DLNADOC/1.50 WinDLNA/1.0";
 
     private static readonly string[] VirtualNicMarkers =
     [
@@ -30,7 +30,7 @@ public sealed class SsdpService : IAsyncDisposable
     private Task? _loop;
     private int _httpPort = 8200;
     private string _uuid = "";
-    private string _friendlyName = "WinDNLA";
+    private string _friendlyName = "WinDLNA";
     private int _bootId = 1;
     private IReadOnlyCollection<string> _disabledAddresses = [];
 

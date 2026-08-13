@@ -74,7 +74,7 @@ internal sealed class SimpleHttpContext : IAsyncDisposable
         if (Response.Headers["Date"] is null)
             sb.Append("Date: ").Append(DateTime.UtcNow.ToString("R")).Append("\r\n");
         if (Response.Headers["Server"] is null)
-            sb.Append("Server: Windows/10 UPnP/1.0 DLNADOC/1.50 WinDNLA/1.0\r\n");
+            sb.Append("Server: Windows/10 UPnP/1.0 DLNADOC/1.50 WinDLNA/1.0\r\n");
 
         sb.Append("Connection: close\r\n\r\n");
         var bytes = Encoding.ASCII.GetBytes(sb.ToString());

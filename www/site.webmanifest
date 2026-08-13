@@ -1,0 +1,20 @@
+{
+  "name": "WinDLNA — DLNA-сервер для Windows",
+  "short_name": "WinDLNA",
+  "description": "Нативный DLNA/UPnP медиасервер для Windows. Работает из коробки, простая настройка.",
+  "lang": "ru-RU",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#071526",
+  "theme_color": "#0b2748",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

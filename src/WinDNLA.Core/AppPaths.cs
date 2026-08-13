@@ -9,13 +9,13 @@ public static class AppPaths
 
     public static string Root =>
         _rootOverride ??
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDNLA");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDLNA");
 
     public static string SettingsFile => Path.Combine(Root, "settings.json");
     public static string LibraryDb => Path.Combine(Root, "library.db");
     public static string ThumbsDir => Path.Combine(Root, "thumbs");
     public static string LogsDir => Path.Combine(Root, "logs");
-    public static string CurrentLogFile => Path.Combine(LogsDir, $"windnla-{DateTime.Now:yyyy-MM-dd}.log");
+    public static string CurrentLogFile => Path.Combine(LogsDir, $"windlna-{DateTime.Now:yyyy-MM-dd}.log");
 
     public static void EnsureCreated()
     {

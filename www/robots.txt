@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Yandex
+Allow: /
+Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&ysclid&gclid
+
+User-agent: Bingbot
+Allow: /
+
+Host: https://windlna.ru
+
+Sitemap: https://windlna.ru/sitemap.xml

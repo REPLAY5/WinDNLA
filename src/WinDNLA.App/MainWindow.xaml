@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tb="using:H.NotifyIcon"
     xmlns:vm="using:WinDNLA.App.ViewModels"
-    Title="WinDNLA"
+    Title="WinDLNA"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -16,7 +16,7 @@
     <Grid>
         <tb:TaskbarIcon
             x:Name="TrayIcon"
-            ToolTipText="WinDNLA"
+            ToolTipText="WinDLNA"
             LeftClickCommand="{x:Bind ShowWindowCommand}"
             NoLeftClickDelay="True">
             <tb:TaskbarIcon.ContextFlyout>
@@ -24,8 +24,8 @@
                     <ToggleMenuFlyoutItem
                         x:Name="AutostartMenuItem"
                         Text="Автозагрузка"
-                        Click="AutostartMenuItem_Click" />
-                    <MenuFlyoutItem Text="Пересканировать" Click="RescanMenuItem_Click" />
+                        Command="{x:Bind ToggleAutostartMenuCommand}" />
+                    <MenuFlyoutItem Text="Пересканировать" Command="{x:Bind ViewModel.RescanCommand}" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem
                         Text="Выход"
@@ -42,7 +42,7 @@
                 <RowDefinition Height="200" />
             </Grid.RowDefinitions>
 
-            <TitleBar x:Name="AppTitleBar" Title="WinDNLA">
+            <TitleBar x:Name="AppTitleBar" Title="WinDLNA">
                 <TitleBar.IconSource>
                     <ImageIconSource ImageSource="Assets/logo.png" />
                 </TitleBar.IconSource>
@@ -72,7 +72,7 @@
                                 <TextBlock Text="Имя" Style="{StaticResource FieldLabel}" />
                                 <TextBox Grid.Column="1"
                                          Text="{x:Bind ViewModel.FriendlyName, Mode=TwoWay}"
-                                         PlaceholderText="WinDNLA"
+                                         PlaceholderText="WinDLNA"
                                          TextWrapping="NoWrap" />
 
                                 <TextBlock Grid.Row="1" Text="Порт" Style="{StaticResource FieldLabel}" />

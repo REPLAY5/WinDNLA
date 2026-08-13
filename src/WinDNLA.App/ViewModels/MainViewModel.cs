@@ -74,7 +74,7 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<string> ScanLog { get; } = [];
     public ObservableCollection<NetworkInterfaceItem> NetworkInterfaces { get; } = [];
 
-    [ObservableProperty] private string friendlyName = "WinDNLA";
+    [ObservableProperty] private string friendlyName = "WinDLNA";
     [ObservableProperty] private double httpPort = 8200;
     [ObservableProperty] private bool transcodingEnabled = true;
     [ObservableProperty] private bool runAtStartup = true;
@@ -275,7 +275,7 @@ public partial class MainViewModel : ObservableObject
         {
             _settings.Update(s =>
             {
-                s.FriendlyName = FriendlyName.Trim().Length == 0 ? "WinDNLA" : FriendlyName.Trim();
+                s.FriendlyName = FriendlyName.Trim().Length == 0 ? "WinDLNA" : FriendlyName.Trim();
                 s.HttpPort = HttpPort is > 0 and < 65535 ? (int)HttpPort : 8200;
                 s.TranscodingEnabled = TranscodingEnabled;
                 s.LibraryRoots = LibraryRoots.ToList();

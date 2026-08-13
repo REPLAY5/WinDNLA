@@ -1,4 +1,4 @@
-# WinDNLA — Windows DLNA Media Server
+# WinDLNA — Windows DLNA Media Server
 
 Unpackaged WinUI 3 (.NET 10) DLNA/UPnP MediaServer для локальной сети.
 
@@ -6,7 +6,7 @@ Unpackaged WinUI 3 (.NET 10) DLNA/UPnP MediaServer для локальной с�
 
 - Имя сервера и иконка (видны DLNA-клиентам)
 - Несколько папок с видео, дерево folder → subfolders
-- Сканирование + превью через ffmpeg (кэш в `%LocalAppData%\WinDNLA\thumbs`)
+- Сканирование + превью через ffmpeg (кэш в `%LocalAppData%\WinDLNA\thumbs`)
 - Авто-рескан каждые 30 секунд и ручной рескан
 - Опциональное перекодирование «на лету» (по расширению / кодеку ≠ h264/h265)
 - Статистика клиентов: IP, файл, скорость Мбит/с, транскод да/нет
@@ -27,7 +27,7 @@ tools/ffmpeg/ffmpeg.exe
 tools/ffmpeg/ffprobe.exe
 ```
 
-При сборке они копируются в `ffmpeg\` рядом с `WinDNLA.exe`.  
+При сборке они копируются в `ffmpeg\` рядом с `WinDLNA.exe`.  
 Скачать: https://www.gyan.dev/ffmpeg/builds/ (release essentials) или BtbN builds.
 
 ## Сборка и запуск (dev)
@@ -40,7 +40,7 @@ dotnet run --project src\WinDNLA.App\WinDNLA.App.csproj -c Debug -p:Platform=x64
 Тихий старт:
 
 ```powershell
-.\src\WinDNLA.App\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\WinDNLA.exe --quiet
+.\src\WinDNLA.App\bin\x64\Debug\net10.0-windows10.0.26100.0\win-x64\WinDLNA.exe --quiet
 ```
 
 При первом bind HTTP/SSDP Windows может запросить разрешение брандмауэра — разрешите для частных сетей. HTTP слушает через обычный TCP-сокет (без http.sys / URL ACL), поэтому запуск не требует прав администратора.
@@ -53,12 +53,12 @@ dotnet run --project src\WinDNLA.App\WinDNLA.App.csproj -c Debug -p:Platform=x64
 dotnet publish src\WinDNLA.App\WinDNLA.App.csproj -c Release -r win-x64 --self-contained -p:Platform=x64 -o artifacts\publish
 
 # 3. MSI (нужен WiX v5: dotnet tool install --global wix)
-.\installer\build-msi.ps1
+powershell -ExecutionPolicy Bypass -File .\installer\build-msi.ps1
 ```
 
-Артефакт: `artifacts\WinDNLA-<version>-x64.msi`
+Артефакт: `artifacts\WinDLNA-<version>-x64.msi`
 
-Установка: `Program Files\WinDNLA\`. Данные пользователя (`settings.json`, `library.db`, thumbs) остаются в `%LocalAppData%\WinDNLA` при uninstall.
+Установка: `Program Files\WinDLNA\`. Данные пользователя (`settings.json`, `library.db`, thumbs) остаются в `%LocalAppData%\WinDLNA` при uninstall.
 
 ## Тесты
 

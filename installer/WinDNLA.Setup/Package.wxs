@@ -3,34 +3,34 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
 
   <Package
-      Name="WinDNLA"
-      Manufacturer="WinDNLA"
+      Name="WinDLNA"
+      Manufacturer="WinDLNA"
       Version="$(var.ProductVersion)"
       UpgradeCode="A1B2C3D4-E5F6-4789-A012-3456789ABCDE"
       Scope="perMachine"
-      Language="1049">
+      Language="1049"
+      Codepage="1251">
 
-    <MajorUpgrade DowngradeErrorMessage="Более новая версия WinDNLA уже установлена." />
+    <MajorUpgrade DowngradeErrorMessage="Более новая версия WinDLNA уже установлена." />
     <MediaTemplate EmbedCab="yes" />
 
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
 
-    <Feature Id="ProductFeature" Title="WinDNLA" Level="1">
+    <Feature Id="ProductFeature" Title="WinDLNA" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="StartupShortcutOptional" />
     </Feature>
 
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <Property Id="INSTALL_STARTUP" Value="1" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="WinDNLA" />
+      <Directory Id="INSTALLFOLDER" Name="WinDLNA" />
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="ApplicationProgramsFolder" Name="WinDNLA" />
+      <Directory Id="ApplicationProgramsFolder" Name="WinDLNA" />
     </StandardDirectory>
 
     <StandardDirectory Id="StartupFolder" />
@@ -43,22 +43,22 @@
 
     <Component Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Guid="B2C3D4E5-F6A7-4890-B123-456789ABCDEF">
       <Shortcut Id="AppShortcut"
-                Name="WinDNLA"
+                Name="WinDLNA"
                 Description="Windows DLNA Media Server"
-                Target="[INSTALLFOLDER]WinDNLA.exe"
+                Target="[INSTALLFOLDER]WinDLNA.exe"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
-      <RegistryValue Root="HKCU" Key="Software\WinDNLA" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      <RegistryValue Root="HKCU" Key="Software\WinDLNA" Name="installed" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
     <Component Id="StartupShortcutOptional" Directory="StartupFolder" Guid="C3D4E5F6-A7B8-4901-C234-56789ABCDEF0" Condition="INSTALL_STARTUP=1">
       <Shortcut Id="StartupShortcut"
-                Name="WinDNLA"
-                Description="WinDNLA (quiet)"
-                Target="[INSTALLFOLDER]WinDNLA.exe"
+                Name="WinDLNA"
+                Description="WinDLNA (quiet)"
+                Target="[INSTALLFOLDER]WinDLNA.exe"
                 Arguments="--quiet"
                 WorkingDirectory="INSTALLFOLDER" />
-      <RegistryValue Root="HKCU" Key="Software\WinDNLA" Name="startup" Type="integer" Value="1" KeyPath="yes" />
+      <RegistryValue Root="HKCU" Key="Software\WinDLNA" Name="startup" Type="integer" Value="1" KeyPath="yes" />
     </Component>
   </Package>
 </Wix>

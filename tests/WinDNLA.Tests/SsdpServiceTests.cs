@@ -9,7 +9,7 @@ public class SsdpServiceTests
     public void Search_response_includes_dlnadoc_and_st_before_location()
     {
         var ssdp = new SsdpService();
-        ssdp.Configure(8200, "11111111-2222-3333-4444-555555555555", "WinDNLA");
+        ssdp.Configure(8200, "11111111-2222-3333-4444-555555555555", "WinDLNA");
         var msg = ssdp.FormatSearchResponse(
             "urn:schemas-upnp-org:device:MediaServer:1",
             "uuid:11111111-2222-3333-4444-555555555555::urn:schemas-upnp-org:device:MediaServer:1",
@@ -26,7 +26,7 @@ public class SsdpServiceTests
     public void Notify_uuid_usn_is_not_doubled()
     {
         var ssdp = new SsdpService();
-        ssdp.Configure(8200, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "WinDNLA");
+        ssdp.Configure(8200, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "WinDLNA");
         var msg = ssdp.BuildNotify(
             "uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             "ssdp:alive",
@@ -42,7 +42,7 @@ public class SsdpServiceTests
     public void MediaServer_search_is_relevant()
     {
         var ssdp = new SsdpService();
-        ssdp.Configure(8200, Guid.NewGuid().ToString(), "WinDNLA");
+        ssdp.Configure(8200, Guid.NewGuid().ToString(), "WinDLNA");
         Assert.True(ssdp.IsRelevantSearch("urn:schemas-upnp-org:device:MediaServer:1"));
         Assert.True(ssdp.IsRelevantSearch("ssdp:all"));
         Assert.False(ssdp.IsRelevantSearch("urn:schemas-upnp-org:device:MediaRenderer:1"));

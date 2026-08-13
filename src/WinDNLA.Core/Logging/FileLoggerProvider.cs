@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace WinDNLA.Core.Logging;
 
 /// <summary>
-/// Background file logger: %LocalAppData%\WinDNLA\logs\windnla-yyyy-MM-dd.log
+/// Background file logger: %LocalAppData%\WinDLNA\logs\windlna-yyyy-MM-dd.log
 /// </summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
@@ -27,7 +27,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         _thread = new Thread(WriteLoop)
         {
             IsBackground = true,
-            Name = "WinDNLA-FileLog",
+            Name = "WinDLNA-FileLog",
             Priority = ThreadPriority.BelowNormal
         };
         _thread.Start();
@@ -113,7 +113,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     private void EnsureWriter()
     {
-        var path = Path.Combine(_directory, $"windnla-{DateTime.Now:yyyy-MM-dd}.log");
+        var path = Path.Combine(_directory, $"windlna-{DateTime.Now:yyyy-MM-dd}.log");
         if (_writer is not null && string.Equals(_openPath, path, StringComparison.OrdinalIgnoreCase))
             return;
 
@@ -133,7 +133,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         try
         {
             var cutoff = DateTime.Now.AddDays(-RetainDays);
-            foreach (var file in Directory.GetFiles(directory, "windnla-*.log"))
+            foreach (var file in Directory.GetFiles(directory, "windlna-*.log"))
             {
                 try
                 {

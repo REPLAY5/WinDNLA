@@ -2,7 +2,7 @@ namespace WinDNLA.Core.Models;
 
 public sealed class AppSettings
 {
-    public string FriendlyName { get; set; } = "WinDNLA";
+    public string FriendlyName { get; set; } = "WinDLNA";
     public int HttpPort { get; set; } = 8200;
     public List<string> LibraryRoots { get; set; } = [];
     public int AutoRescanSeconds { get; set; } = 30;

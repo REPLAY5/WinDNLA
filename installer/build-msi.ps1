@@ -15,10 +15,10 @@ New-Item -ItemType Directory -Force -Path $PublishDir, $OutDir | Out-Null
 $ffmpeg = Join-Path $Root "tools\ffmpeg\ffmpeg.exe"
 $ffprobe = Join-Path $Root "tools\ffmpeg\ffprobe.exe"
 if (-not (Test-Path $ffmpeg) -or -not (Test-Path $ffprobe)) {
-    Write-Warning "ffmpeg.exe / ffprobe.exe not found in tools\ffmpeg — MSI will not include them. Copy binaries before packaging for a complete install."
+    Write-Warning "ffmpeg.exe / ffprobe.exe not found in tools\ffmpeg - MSI will not include them. Copy binaries before packaging for a complete install."
 }
 
-Write-Host "Publishing WinDNLA ($Configuration, win-x64, self-contained)..."
+Write-Host ('Publishing WinDLNA ({0}, win-x64, self-contained)...' -f $Configuration)
 dotnet publish (Join-Path $Root "src\WinDNLA.App\WinDNLA.App.csproj") `
     -c $Configuration `
     -r win-x64 `
@@ -34,16 +34,17 @@ if (Test-Path $ffmpeg) { Copy-Item $ffmpeg $ffmpegOut -Force }
 if (Test-Path $ffprobe) { Copy-Item $ffprobe $ffmpegOut -Force }
 
 Write-Host "Building MSI with WiX..."
+# Do not pass -p:DefineConstants — MSBuild splits on ';' and drops ProductVersion.
+# WinDNLA.Setup.wixproj already maps PublishDir / ProductVersion into DefineConstants.
 dotnet build $SetupProj -c $Configuration `
     -p:PublishDir="$PublishDir" `
-    -p:ProductVersion=$Version `
-    -p:DefineConstants="PublishDir=$PublishDir;ProductVersion=$Version"
+    -p:ProductVersion=$Version
 
-$built = Get-ChildItem (Join-Path $Root "installer\WinDNLA.Setup\bin") -Recurse -Filter "WinDNLA.msi" | Select-Object -First 1
+$built = Get-ChildItem (Join-Path $Root "installer\WinDNLA.Setup\bin") -Recurse -Filter "WinDLNA.msi" | Select-Object -First 1
 if (-not $built) {
-    throw "WinDNLA.msi was not produced. Is WiX SDK available? Try: dotnet restore $SetupProj"
+    throw "WinDLNA.msi was not produced. Is WiX SDK available? Try: dotnet restore $SetupProj"
 }
 
-$dest = Join-Path $OutDir "WinDNLA-$Version-x64.msi"
+$dest = Join-Path $OutDir "WinDLNA-$Version-x64.msi"
 Copy-Item $built.FullName $dest -Force
 Write-Host "MSI: $dest"

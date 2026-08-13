@@ -12,8 +12,8 @@ namespace WinDNLA.App;
 
 public partial class App : Application
 {
-    public const string MutexName = "Global\\WinDNLA_SingleInstance_Mutex";
-    public const string ShowEventName = "Global\\WinDNLA_ShowWindow_Event";
+    public const string MutexName = "Global\\WinDLNA_SingleInstance_Mutex";
+    public const string ShowEventName = "Global\\WinDLNA_ShowWindow_Event";
 
     private MainWindow? _window;
     private Mutex? _mutex;
@@ -78,7 +78,7 @@ public partial class App : Application
 
         _services = BuildServices();
         var log = _services.GetRequiredService<ILogger<App>>();
-        log.LogInformation("WinDNLA starting quiet={Quiet} log={LogFile}", StartQuiet, AppPaths.CurrentLogFile);
+        log.LogInformation("WinDLNA starting quiet={Quiet} log={LogFile}", StartQuiet, AppPaths.CurrentLogFile);
         var vm = _services.GetRequiredService<MainViewModel>();
         _window = new MainWindow(vm, StartQuiet);
         if (!StartQuiet)
@@ -87,7 +87,7 @@ public partial class App : Application
 
     public void DisposeServices()
     {
-        try { _services?.GetService<ILogger<App>>()?.LogInformation("WinDNLA shutting down"); } catch { /* ignore */ }
+        try { _services?.GetService<ILogger<App>>()?.LogInformation("WinDLNA shutting down"); } catch { /* ignore */ }
         try { _services?.Dispose(); } catch { /* ignore */ }
         _services = null;
     }

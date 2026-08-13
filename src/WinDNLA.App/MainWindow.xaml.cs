@@ -30,6 +30,8 @@ public sealed partial class MainWindow : Window
         ViewModel = viewModel;
         ShowWindowCommand = new RelayCommand(ShowFromTray);
         ExitCommand = new RelayCommand(ExitApplication);
+        ToggleAutostartMenuCommand = new RelayCommand(ToggleAutostartFromTray);
+        AutostartMenuItem.Command = ToggleAutostartMenuCommand;
 
         viewModel.InitializeUiMarshaling(action => DispatcherQueue.TryEnqueue(() => action()));
         viewModel.UiRefreshRequested += (_, _) => DispatcherQueue.TryEnqueue(() => Bindings.Update());
@@ -46,6 +48,7 @@ public sealed partial class MainWindow : Window
 
     public IRelayCommand ShowWindowCommand { get; }
     public IRelayCommand ExitCommand { get; }
+    public IRelayCommand ToggleAutostartMenuCommand { get; }
 
     public string ServerToggleLabel => ViewModel.IsServerRunning ? "Остановить" : "Запустить";
 
@@ -213,16 +216,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void AutostartMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ToggleAutostartFromTray()
     {
-        var enabled = AutostartMenuItem.IsChecked;
-        ViewModel.SetAutostart(enabled);
-        Bindings.Update();
-    }
-
-    private void RescanMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.RescanCommand.Execute(null);
+        // PopupMenu mode does not toggle IsChecked or raise Click — only Command.
+        ViewModel.SetAutostart(!ViewModel.RunAtStartup);
+        AutostartMenuItem.IsChecked = ViewModel.RunAtStartup;
         Bindings.Update();
     }
 

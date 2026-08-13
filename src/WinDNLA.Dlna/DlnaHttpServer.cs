@@ -915,10 +915,10 @@ public sealed class DlnaHttpServer : IAsyncDisposable
               <device>
                 <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
                 <friendlyName>{name}</friendlyName>
-                <manufacturer>WinDNLA</manufacturer>
-                <manufacturerURL>https://github.com/windnla</manufacturerURL>
+                <manufacturer>WinDLNA</manufacturer>
+                <manufacturerURL>https://windlna.ru</manufacturerURL>
                 <modelDescription>Windows DLNA Media Server</modelDescription>
-                <modelName>WinDNLA</modelName>
+                <modelName>WinDLNA</modelName>
                 <modelNumber>1.0</modelNumber>
                 <serialNumber>1</serialNumber>
                 <UDN>uuid:{_uuid}</UDN>
