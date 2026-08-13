@@ -24,7 +24,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.Resize(new SizeInt32(920, 820));
+        AppWindow.Resize(new SizeInt32(820, 1000));
         ApplyTrayIcon();
 
         ViewModel = viewModel;
