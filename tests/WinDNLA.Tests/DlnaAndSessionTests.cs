@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using WinDNLA.Core.Models;
 using WinDNLA.Core.Services;
@@ -436,6 +437,11 @@ public class DlnaHttpServerTests
         Assert.Contains("JPEG_SM", string.Join(",", smFeatures));
         Assert.True(sm.Headers.TryGetValues("transferMode.dlna.org", out var mode));
         Assert.Contains("Interactive", string.Join(",", mode));
+        Assert.True(sm.Headers.TryGetValues("Cache-Control", out var thumbCache));
+        Assert.Contains("no-cache", string.Join(",", thumbCache), StringComparison.OrdinalIgnoreCase);
+        Assert.True(sm.Headers.TryGetValues("ETag", out var thumbEtag));
+        Assert.NotEmpty(thumbEtag);
+        Assert.NotNull(sm.Content.Headers.LastModified);
         Assert.True((await sm.Content.ReadAsByteArrayAsync()).Length > 0);
 
         using var tn = await client.GetAsync($"{http.BaseUrl}/thumb/{video.ObjectId}/tn");
@@ -502,6 +508,106 @@ public class DlnaHttpServerTests
     }
 
     [Fact]
+    public async Task Gena_notifies_on_library_change_with_new_seq_and_container_ids()
+    {
+        await using var host = TestHost.Create();
+        host.CreateVideo("first.mp4", "one");
+        host.Ffmpeg.ForcedVideoCodec = "h264";
+        await host.ScanWithRootAsync();
+        var http = await host.StartHttpAsync();
+
+        await using var callback = GenaCallbackListener.Start();
+        using var client = new HttpClient();
+        using (var req = new HttpRequestMessage(new HttpMethod("SUBSCRIBE"), $"{http.BaseUrl}/ContentDirectory/event"))
+        {
+            req.Headers.TryAddWithoutValidation("CALLBACK", callback.CallbackHeader);
+            req.Headers.TryAddWithoutValidation("NT", "upnp:event");
+            req.Headers.TryAddWithoutValidation("TIMEOUT", "Second-300");
+            using var resp = await client.SendAsync(req);
+            resp.EnsureSuccessStatusCode();
+        }
+
+        var initial = await callback.WaitForCountAsync(1, TimeSpan.FromSeconds(5));
+        Assert.Equal(0, initial[0].Seq);
+        Assert.Contains("SystemUpdateID", initial[0].Body);
+        Assert.Contains("ContainerUpdateIDs", initial[0].Body);
+        Assert.Contains("0,", initial[0].Body);
+        var idAfterFirst = host.Repo.GetSystemUpdateId();
+
+        host.CreateVideo("second.mp4", "two");
+        await host.Scanner.ScanAsync();
+        await http.NotifyContentChangedAsync();
+
+        var events = await callback.WaitForCountAsync(2, TimeSpan.FromSeconds(5));
+        var second = events[1];
+        Assert.Equal(1, second.Seq);
+        Assert.Contains($"<SystemUpdateID>{host.Repo.GetSystemUpdateId()}</SystemUpdateID>", second.Body);
+        Assert.Contains("0,", second.Body);
+        Assert.True(host.Repo.GetSystemUpdateId() > idAfterFirst);
+    }
+
+    [Fact]
+    public async Task Browse_after_rescan_without_http_restart_lists_new_file()
+    {
+        await using var host = TestHost.Create();
+        host.CreateVideo("first.mp4", "one");
+        host.Ffmpeg.ForcedVideoCodec = "h264";
+        await host.ScanWithRootAsync();
+
+        var http = await host.StartHttpAsync();
+        using var client = new HttpClient();
+        var root = host.Repo.GetChildFolders(null).Single();
+        var before = await BrowseAsync(client, http.BaseUrl!, root.ObjectId);
+        Assert.Contains("first", before);
+        Assert.DoesNotContain("second", before);
+
+        host.CreateVideo("second.mp4", "two");
+        await host.Scanner.ScanAsync();
+        var after = await BrowseAsync(client, http.BaseUrl!, root.ObjectId);
+        Assert.Contains("first", after);
+        Assert.Contains("second", after);
+    }
+
+    [Fact]
+    public async Task Description_and_browse_have_upnp_cache_headers()
+    {
+        await using var host = TestHost.Create();
+        host.CreateVideo("clip.mp4", "hello");
+        host.Ffmpeg.ForcedVideoCodec = "h264";
+        await host.ScanWithRootAsync();
+        var http = await host.StartHttpAsync();
+
+        using var client = new HttpClient();
+        using var desc = await client.GetAsync($"{http.BaseUrl}/description.xml");
+        desc.EnsureSuccessStatusCode();
+        AssertCatalogHeaders(desc, host.Repo.GetSystemUpdateId());
+
+        using var browseReq = new HttpRequestMessage(HttpMethod.Post, $"{http.BaseUrl}/ContentDirectory/control");
+        browseReq.Content = new StringContent(
+            """
+            <?xml version="1.0"?>
+            <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+              <s:Body>
+                <u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">
+                  <ObjectID>0</ObjectID>
+                  <BrowseFlag>BrowseDirectChildren</BrowseFlag>
+                  <Filter>*</Filter>
+                  <StartingIndex>0</StartingIndex>
+                  <RequestedCount>0</RequestedCount>
+                  <SortCriteria></SortCriteria>
+                </u:Browse>
+              </s:Body>
+            </s:Envelope>
+            """,
+            Encoding.UTF8, "text/xml");
+        browseReq.Headers.TryAddWithoutValidation(
+            "SOAPACTION", "\"urn:schemas-upnp-org:service:ContentDirectory:1#Browse\"");
+        using var browse = await client.SendAsync(browseReq);
+        browse.EnsureSuccessStatusCode();
+        AssertCatalogHeaders(browse, host.Repo.GetSystemUpdateId());
+    }
+
+    [Fact]
     public async Task ConnectionManager_GetProtocolInfo()
     {
         await using var host = TestHost.Create();
@@ -549,5 +655,150 @@ public class DlnaHttpServerTests
         var resp = await client.SendAsync(req);
         resp.EnsureSuccessStatusCode();
         return await resp.Content.ReadAsStringAsync();
+    }
+
+    private static void AssertCatalogHeaders(HttpResponseMessage resp, long updateId)
+    {
+        Assert.True(resp.Headers.Contains("EXT") || resp.Headers.TryGetValues("EXT", out _));
+        Assert.True(resp.Headers.TryGetValues("Cache-Control", out var cache));
+        var cacheValue = string.Join(",", cache);
+        Assert.Contains("no-cache", cacheValue, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("max-age=0", cacheValue, StringComparison.OrdinalIgnoreCase);
+        Assert.True(resp.Headers.TryGetValues("Pragma", out var pragma));
+        Assert.Contains("no-cache", string.Join(",", pragma), StringComparison.OrdinalIgnoreCase);
+        var etag = resp.Headers.ETag?.Tag ?? resp.Headers.GetValues("ETag").Single();
+        Assert.Contains(updateId.ToString(), etag);
+        Assert.NotNull(resp.Content.Headers.LastModified);
+    }
+}
+
+internal sealed class GenaNotify
+{
+    public int Seq { get; init; }
+    public string Body { get; init; } = "";
+}
+
+internal sealed class GenaCallbackListener : IAsyncDisposable
+{
+    private readonly TcpListener _listener;
+    private readonly CancellationTokenSource _cts = new();
+    private readonly List<GenaNotify> _notifies = [];
+    private readonly object _lock = new();
+    private readonly Task _loop;
+
+    private GenaCallbackListener(TcpListener listener, int port)
+    {
+        _listener = listener;
+        Port = port;
+        _loop = AcceptLoopAsync(_cts.Token);
+    }
+
+    public int Port { get; }
+    public string CallbackHeader => $"<http://127.0.0.1:{Port}/cb>";
+
+    public static GenaCallbackListener Start()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        return new GenaCallbackListener(listener, port);
+    }
+
+    public async Task<IReadOnlyList<GenaNotify>> WaitForCountAsync(int count, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            lock (_lock)
+            {
+                if (_notifies.Count >= count)
+                    return _notifies.ToList();
+            }
+            await Task.Delay(20).ConfigureAwait(false);
+        }
+
+        lock (_lock)
+            throw new TimeoutException($"GENA expected {count} notify(s), got {_notifies.Count}");
+    }
+
+    private async Task AcceptLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var client = await _listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                _ = Task.Run(() => HandleClientAsync(client), ct);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+            catch
+            {
+                if (ct.IsCancellationRequested) break;
+            }
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client)
+    {
+        try
+        {
+            using (client)
+            {
+                var stream = client.GetStream();
+                using var ms = new MemoryStream();
+                var buf = new byte[4096];
+                var headerEnd = -1;
+                var contentLength = 0;
+                while (headerEnd < 0 || ms.Length < headerEnd + contentLength)
+                {
+                    var n = await stream.ReadAsync(buf).ConfigureAwait(false);
+                    if (n <= 0) break;
+                    ms.Write(buf, 0, n);
+                    if (headerEnd >= 0) continue;
+                    var text = Encoding.ASCII.GetString(ms.ToArray());
+                    var idx = text.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+                    if (idx < 0) continue;
+                    headerEnd = idx + 4;
+                    foreach (var line in text[..idx].Split("\r\n"))
+                    {
+                        if (!line.StartsWith("CONTENT-LENGTH:", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        int.TryParse(line["CONTENT-LENGTH:".Length..].Trim(), out contentLength);
+                    }
+                }
+
+                var all = ms.ToArray();
+                var headerText = Encoding.ASCII.GetString(all, 0, Math.Max(0, headerEnd));
+                var seq = 0;
+                foreach (var line in headerText.Split("\r\n"))
+                {
+                    if (!line.StartsWith("SEQ:", StringComparison.OrdinalIgnoreCase)) continue;
+                    int.TryParse(line["SEQ:".Length..].Trim(), out seq);
+                }
+
+                var bodyLen = Math.Max(0, Math.Min(contentLength, all.Length - headerEnd));
+                var body = headerEnd >= 0
+                    ? Encoding.UTF8.GetString(all, headerEnd, bodyLen)
+                    : "";
+                lock (_lock)
+                    _notifies.Add(new GenaNotify { Seq = seq, Body = body });
+
+                var ack = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
+                await stream.WriteAsync(ack).ConfigureAwait(false);
+            }
+        }
+        catch
+        {
+            // test helper
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        try { _listener.Stop(); } catch { /* ignore */ }
+        try { await _loop.WaitAsync(TimeSpan.FromSeconds(1)); } catch { /* ignore */ }
+        _cts.Dispose();
     }
 }

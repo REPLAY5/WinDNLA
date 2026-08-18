@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Data.Sqlite;
@@ -60,6 +61,14 @@ public sealed class LibraryRepository : IDisposable
             INSERT OR IGNORE INTO meta(key, value) VALUES('system_update_id', '1');
             """;
         cmd.ExecuteNonQuery();
+
+        using var mtime = _connection.CreateCommand();
+        mtime.CommandText =
+            """
+            INSERT OR IGNORE INTO meta(key, value) VALUES('system_update_mtime', $t)
+            """;
+        mtime.Parameters.AddWithValue("$t", DateTime.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture));
+        mtime.ExecuteNonQuery();
         DropLegacyNeedsTranscodeColumn();
     }
 
@@ -99,10 +108,32 @@ public sealed class LibraryRepository : IDisposable
     {
         lock (_lock)
         {
-            using var cmd = _connection.CreateCommand();
-            cmd.CommandText =
+            using var bump = _connection.CreateCommand();
+            bump.CommandText =
                 "UPDATE meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT) WHERE key='system_update_id'";
-            cmd.ExecuteNonQuery();
+            bump.ExecuteNonQuery();
+
+            using var mtime = _connection.CreateCommand();
+            mtime.CommandText =
+                """
+                INSERT INTO meta(key, value) VALUES('system_update_mtime', $t)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """;
+            mtime.Parameters.AddWithValue("$t", DateTime.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture));
+            mtime.ExecuteNonQuery();
+        }
+    }
+
+    public DateTime GetSystemUpdateTimeUtc()
+    {
+        lock (_lock)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT value FROM meta WHERE key='system_update_mtime'";
+            var value = cmd.ExecuteScalar() as string;
+            if (long.TryParse(value, CultureInfo.InvariantCulture, out var ticks) && ticks > DateTime.UnixEpoch.Ticks)
+                return new DateTime(ticks, DateTimeKind.Utc);
+            return DateTime.UtcNow;
         }
     }
 

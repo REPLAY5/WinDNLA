@@ -96,6 +96,7 @@ public sealed class DlnaHttpServer : IAsyncDisposable
         }
         try { _cts?.Dispose(); } catch { /* ignore */ }
         _cts = null;
+        _gena.Clear();
     }
 
     private async Task AcceptLoopAsync(CancellationToken ct)
@@ -513,6 +514,36 @@ public sealed class DlnaHttpServer : IAsyncDisposable
             _ = SendGenaEventAsync(sidOut, initial: true);
     }
 
+    /// <summary>
+    /// Tell subscribed TVs that ContentDirectory changed (SystemUpdateID / ContainerUpdateIDs).
+    /// </summary>
+    public Task NotifyContentChangedAsync()
+    {
+        var now = DateTimeOffset.UtcNow;
+        foreach (var sid in _gena.Keys)
+        {
+            if (_gena.TryGetValue(sid, out var expired) && expired.Expires < now)
+                _gena.TryRemove(sid, out _);
+        }
+
+        var sids = _gena
+            .Where(kv => kv.Value.Path.Contains("ContentDirectory", StringComparison.OrdinalIgnoreCase))
+            .Select(kv => kv.Key)
+            .ToArray();
+        if (sids.Length == 0)
+            return Task.CompletedTask;
+
+        _logger?.LogInformation("GENA content change notify subscribers={Count} updateId={Id}",
+            sids.Length, _repo.GetSystemUpdateId());
+        return NotifyAllAsync(sids);
+    }
+
+    private async Task NotifyAllAsync(string[] sids)
+    {
+        foreach (var sid in sids)
+            await SendGenaEventAsync(sid, initial: false).ConfigureAwait(false);
+    }
+
     private async Task SendGenaEventAsync(string sid, bool initial)
     {
         if (!_gena.TryGetValue(sid, out var sub)) return;
@@ -538,12 +569,21 @@ public sealed class DlnaHttpServer : IAsyncDisposable
         }
 
         var updateId = _repo.GetSystemUpdateId();
+        var containerUpdateIds = BuildContainerUpdateIds(updateId);
         return
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
             "<e:propertyset xmlns:e=\"urn:schemas-upnp-org:event-1-0\">" +
             $"<e:property><SystemUpdateID>{updateId}</SystemUpdateID></e:property>" +
-            "<e:property><ContainerUpdateIDs></ContainerUpdateIDs></e:property>" +
+            $"<e:property><ContainerUpdateIDs>{containerUpdateIds}</ContainerUpdateIDs></e:property>" +
             "</e:propertyset>";
+    }
+
+    private string BuildContainerUpdateIds(long updateId)
+    {
+        var parts = new List<string> { $"0,{updateId}" };
+        foreach (var folder in _repo.GetChildFolders(null))
+            parts.Add($"{folder.ObjectId},{updateId}");
+        return string.Join(",", parts);
     }
 
     private async Task SendGenaNotifyAsync(string url, string sid, int seq, string xml)
@@ -853,6 +893,10 @@ public sealed class DlnaHttpServer : IAsyncDisposable
         ctx.Response.AddHeader("transferMode.dlna.org", "Interactive");
         ctx.Response.AddHeader("contentFeatures.dlna.org",
             $"DLNA.ORG_PN={profile};DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=00D00000000000000000000000000000");
+        ctx.Response.AddHeader("Cache-Control", "no-cache");
+        var thumbInfo = new FileInfo(file);
+        ctx.Response.AddHeader("Last-Modified", thumbInfo.LastWriteTimeUtc.ToString("R"));
+        ctx.Response.AddHeader("ETag", $"\"{thumbInfo.Length:X}-{thumbInfo.LastWriteTimeUtc.Ticks:X}\"");
         _logger?.LogInformation("Thumb {Id} {Profile} {Bytes} bytes file={File}", objectId, profile, bytes.Length, file);
 
         if (!ctx.Request.Method.Equals("HEAD", StringComparison.OrdinalIgnoreCase))
@@ -992,14 +1036,25 @@ public sealed class DlnaHttpServer : IAsyncDisposable
     private static string SecurityElementEscape(string value) =>
         value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
 
-    private static async Task WriteTextAsync(SimpleHttpContext ctx, string text, string contentType, int status = 200)
+    private async Task WriteTextAsync(SimpleHttpContext ctx, string text, string contentType, int status = 200)
     {
         var bytes = Encoding.UTF8.GetBytes(text);
         ctx.Response.StatusCode = status;
         ctx.Response.ContentType = contentType;
         ctx.Response.ContentLength64 = bytes.Length;
+        ApplyCatalogCacheHeaders(ctx);
         await ctx.Response.OutputStream.WriteAsync(bytes).ConfigureAwait(false);
         await ctx.CloseAsync().ConfigureAwait(false);
+    }
+
+    private void ApplyCatalogCacheHeaders(SimpleHttpContext ctx)
+    {
+        ctx.Response.AddHeader("EXT", "");
+        ctx.Response.AddHeader("Cache-Control", "no-cache=\"Ext\", no-store, must-revalidate, max-age=0");
+        ctx.Response.AddHeader("Pragma", "no-cache");
+        var updateId = _repo.GetSystemUpdateId();
+        ctx.Response.AddHeader("ETag", $"\"{updateId}\"");
+        ctx.Response.AddHeader("Last-Modified", _repo.GetSystemUpdateTimeUtc().ToString("R"));
     }
 
     private const string ContentDirectoryScpd =

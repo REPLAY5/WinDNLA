@@ -5,24 +5,31 @@ namespace WinDNLA.Dlna;
 
 public sealed class DlnaServer : IAsyncDisposable
 {
+    private static readonly TimeSpan LibraryNotifyDebounce = TimeSpan.FromSeconds(1);
+
     private readonly SettingsService _settings;
     private readonly DlnaHttpServer _http;
     private readonly SsdpService _ssdp;
+    private readonly LibraryScanner _scanner;
     private readonly ILogger<DlnaServer>? _logger;
     private int _activeSessions;
+    private CancellationTokenSource? _notifyCts;
 
     public DlnaServer(
         SettingsService settings,
         DlnaHttpServer http,
         SsdpService ssdp,
         SessionTracker sessions,
+        LibraryScanner scanner,
         ILogger<DlnaServer>? logger = null)
     {
         _settings = settings;
         _http = http;
         _ssdp = ssdp;
         Sessions = sessions;
+        _scanner = scanner;
         _logger = logger;
+        _scanner.LibraryChanged += OnLibraryChanged;
         Sessions.SessionsChanged += OnSessionsChanged;
     }
 
@@ -81,11 +88,59 @@ public sealed class DlnaServer : IAsyncDisposable
 
     public async Task StopAsync()
     {
+        CancelPendingNotify();
         await _ssdp.StopAsync().ConfigureAwait(false);
         _http.Stop();
         IsRunning = false;
         StatusMessage = "Остановлен";
         _logger?.LogInformation("DLNA stopped");
+    }
+
+    private void OnLibraryChanged(object? sender, EventArgs e)
+    {
+        if (!IsRunning) return;
+        var cts = new CancellationTokenSource();
+        var prev = Interlocked.Exchange(ref _notifyCts, cts);
+        try { prev?.Cancel(); } catch { /* ignore */ }
+        try { prev?.Dispose(); } catch { /* ignore */ }
+        _ = DebounceLibraryNotifyAsync(cts.Token);
+    }
+
+    private async Task DebounceLibraryNotifyAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(LibraryNotifyDebounce, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        if (!IsRunning) return;
+        _logger?.LogInformation("Library changed — GENA notify + SSDP alive");
+        try
+        {
+            await _http.NotifyContentChangedAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "GENA library notify failed");
+        }
+
+        if (IsRunning)
+            _ = _ssdp.AnnounceAliveAsync();
+    }
+
+    private void CancelPendingNotify()
+    {
+        var prev = Interlocked.Exchange(ref _notifyCts, null);
+        try { prev?.Cancel(); } catch { /* ignore */ }
+        try { prev?.Dispose(); } catch { /* ignore */ }
     }
 
     private void OnSessionsChanged(object? sender, EventArgs e)
@@ -105,5 +160,9 @@ public sealed class DlnaServer : IAsyncDisposable
         await StartAsync().ConfigureAwait(false);
     }
 
-    public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
+    public async ValueTask DisposeAsync()
+    {
+        _scanner.LibraryChanged -= OnLibraryChanged;
+        await StopAsync().ConfigureAwait(false);
+    }
 }

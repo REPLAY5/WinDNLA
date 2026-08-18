@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Bumped by installer/release.ps1 (last component +1). -->
+    <Version>1.0.0.3</Version>
+    <AssemblyVersion>1.0.0.3</AssemblyVersion>
+    <FileVersion>1.0.0.3</FileVersion>
+    <InformationalVersion>1.0.0.3</InformationalVersion>
+    <Company>WinDLNA</Company>
+    <Product>WinDLNA</Product>
+  </PropertyGroup>
+</Project>
